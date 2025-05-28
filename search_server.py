@@ -5,9 +5,20 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModel
 
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 # Import functions from your existing file
 # Assuming your file is named vector_search.py - adjust as needed
 # If importing doesn't work, you'll need to copy the relevant functions
+
+PG_DB_USER = os.getenv('PG_DB_USER')
+PG_DB_PASS = os.getenv('PG_DB_PASS')
+PG_DB_HOST = os.getenv('PG_DB_HOST')
+PG_DB_PORT = os.getenv('PG_DB_PORT')
+PG_DB_NAME = os.getenv('PG_DB_NAME')
+
 
 try:
     from vector_search import get_embedding, find_similar
@@ -53,9 +64,11 @@ except ImportError:
         """Connect to PostgreSQL database"""
         import psycopg2
         return psycopg2.connect(
-            dbname="smithy",
-            host="localhost",
-            port="5432"
+            dbname=PG_DB_NAME,
+            host=PG_DB_HOST,
+            port=PG_DB_PORT,
+            password=PG_DB_PASS,
+            user=PG_DB_USER
         )
 
     def find_similar(query_vector: np.ndarray, limit: int = 5):
@@ -64,15 +77,19 @@ except ImportError:
         cur = conn.cursor()
 
         try:
-            cur.execute("""
-                        SELECT bill,
-                               text_content,
-                               1 - (embedding <=> %s::vector) as similarity
-                        FROM bills
-                        ORDER BY similarity DESC
-                            LIMIT %s
-                        """, (np.array(query_vector[0]).tolist(), limit))
-
+            cur.execute(
+                """
+                    SELECT 
+                        bill,
+                        title, 
+                        text_content, 
+                        1 - (embedding <=> %s::vector) as similarity, 
+                        1 - (title_embedding <=> %s::vector) as short_title_similarity
+                    FROM bills 
+                    ORDER BY short_title_similarity DESC, similarity DESC LIMIT %s;
+                """,
+                (np.array(query_vector[0]).tolist(), np.array(query_vector[0]).tolist(), limit)
+            )
             results = cur.fetchall()
             return results
 
@@ -103,10 +120,12 @@ def api_search():
 
         # Format results
         results = []
-        for bill, text, similarity in similar_results:
+        for bill, title, text, similarity, short_title_similarity in similar_results:
             results.append({
                 'bill': bill,
+                'title': title,
                 'text': text,
+                'title_similarity': float(short_title_similarity),
                 'similarity': float(similarity)  # Convert to float for JSON serialization
             })
 

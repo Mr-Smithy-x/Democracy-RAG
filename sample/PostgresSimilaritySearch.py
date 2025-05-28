@@ -266,6 +266,18 @@ def get_bills():
         curr.close()
         conn.close()
 
+def get_package_infos():
+    conn = connect_mysql_db()
+    curr = conn.cursor()
+
+    try:
+        curr.execute("SELECT package_id, title FROM package_infos WHERE package_id LIKE 'BILLS-119%' ORDER BY date_issued DESC;")
+        results = curr.fetchall()
+        return results
+    finally:
+        curr.close()
+        conn.close()
+
 
 def downloads():
     bills = get_bills()
@@ -281,6 +293,28 @@ def downloads():
         )
         url = f"https://www.govinfo.gov/content/pkg/{package_id}/html/{package_id}.htm"
         download_file(url, file_name)
+
+def update_title_embeddings():
+    bills = get_package_infos()
+
+    conn = connect_postgres_db()
+    cur = conn.cursor()
+
+    for package_id, title in bills:
+        if title is None:
+            continue
+        try:
+            vector = get_embedding(title)
+            cur.execute("UPDATE bills SET title = %s, title_embedding = %s WHERE bill = %s",
+                        (title, np.array(vector[0]).tolist(), package_id))
+            conn.commit()
+            print("Title embeddings updated successfully")
+        except Exception as e:
+            print(f"Error updated vector: {e}")
+            conn.rollback()
+    cur.close()
+    conn.close()
+
 
 
 # Example usage
@@ -307,7 +341,8 @@ if __name__ == "__main__":
     search("What are some bills discussing Artificial Intelligence?")
     #downloads()
     try:
-        insert_all_file_chunks_from_path('htm/')
+        update_title_embeddings()
+        #insert_all_file_chunks_from_path('htm/')
     except Exception as e:
         print(f"Error inserting chunks: {e}")
     finally:
