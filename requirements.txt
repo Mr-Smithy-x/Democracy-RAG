@@ -1,0 +1,16 @@
+eventlet~=0.30.0
+pycryptodome~=3.9.9
+websocket-client~=0.57.0
+python-dotenv~=0.15.0
+praw~=7.1.2
+psycopg2~=2.9.10
+pymemcache~=3.4.0
+transformers~=4.52.3
+tokenizers~=0.21.1
+psycopg2-binary~=2.9.10
+numpy~=2.2.6
+torch~=2.7.0
+pandas~=2.2.3
+scikit-learn~=1.6.1
+mysql-connector-python~=9.3.0
+requests~=2.32.3
