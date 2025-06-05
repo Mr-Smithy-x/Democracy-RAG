@@ -14,3 +14,5 @@ pandas~=2.2.3
 scikit-learn~=1.6.1
 mysql-connector-python~=9.3.0
 requests~=2.32.3
+bs4~=0.0.2
+lxml~=5.4.0
