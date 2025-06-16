@@ -1,6 +1,7 @@
 import json
 
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 from bs4 import XMLParsedAsHTMLWarning
 import warnings
 import re
@@ -42,11 +43,80 @@ class Node:
     def get_parent(self):
         return self.parent
 
+class QuotedBlock(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.sections = []
+        self.subsections = []
+        self.paragraphs = []
+        self.subparagraphs = []
+        self.clauses = []
+        self.subparts = []
+        self.after_quoted_block = None
+
+    def add_subparts(self, subpart):
+        self.subparts.extend(subpart)
+
+    def add_sections(self, section):
+        self.sections.extend(section)
+
+    def add_subsections(self, subsection):
+        self.subsections.extend(subsection)
+
+    def add_paragraphs(self, paragraph):
+        self.paragraphs.extend(paragraph)
+
+    def add_subparagraphs(self, subparagraph):
+        self.subparagraphs.extend(subparagraph)
+
+    def add_clauses(self, clause):
+        self.clauses.extend(clause)
+
+    def set_after_quoted_block(self, param):
+        self.after_quoted_block = param
+
+
+class Clause(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.quoted_blocks = []
+
+    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
+        self.quoted_blocks.extend(quoted_blocks)
+
+class Item(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+
+class Subclause(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.quoted_blocks = []
+
+    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
+        self.quoted_blocks.extend(quoted_blocks)
+
 class Subparagraph(Node):
     def __init__(self, text, refId):
         super().__init__()
         self.text = text
         self.refId = refId
+        self.clauses = []
+        self.quoted_blocks = []
+
+    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
+        self.quoted_blocks.extend(quoted_blocks)
+
+    def add_clause(self, clauses: list[Clause]):
+        self.clauses.extend(clauses)
 
 class Paragraph(Node):
     def __init__(self, text, refId):
@@ -54,9 +124,13 @@ class Paragraph(Node):
         self.text = text
         self.refId = refId
         self.subparagraphs = []
+        self.quoted_blocks = []
 
     def add_subparagraph(self, subparagraphs: list[Subparagraph]):
         self.subparagraphs.extend(subparagraphs)
+
+    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
+        self.quoted_blocks.extend(quoted_blocks)
 
 class Subsection(Node):
 
@@ -64,6 +138,14 @@ class Subsection(Node):
         super().__init__()
         self.text = text
         self.refId = refId
+        self.quoted_blocks = []
+        self.paragraphs = []
+
+    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
+        self.quoted_blocks.extend(quoted_blocks)
+
+    def add_paragraphs(self, paragraphs: list[Paragraph]):
+        self.paragraphs.extend(paragraphs)
 
 class Section(Node):
 
@@ -73,12 +155,26 @@ class Section(Node):
         self.refId = refId
         self.subsections = []
         self.paragraphs = []
+        self.quoted_blocks = []
 
     def add_subsection(self, subsections: list[Subsection]):
         self.subsections.extend(subsections)
 
     def add_paragraph(self, paragraphs: list[Paragraph]):
         self.paragraphs.extend(paragraphs)
+
+    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
+        self.quoted_blocks.extend(quoted_blocks)
+
+class Subpart(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.sections = []
+
+    def add_sections(self, sections: list[Section]):
+        self.sections.extend(sections)
 
 class Part(Node):
 
@@ -87,9 +183,16 @@ class Part(Node):
         self.text = text
         self.refId = refId
         self.sections = []
+        self.subparts = []
+
+    def add_sections(self, sections: list[Section]):
+        self.sections.extend(sections)
 
     def add_section(self, section: Section):
         self.sections.append(section)
+
+    def add_subparts(self, subparts: list[Subpart]):
+        self.subparts.extend(subparts)
 
 class Subtitle(Node):
 
@@ -125,35 +228,50 @@ def custom_encoder(obj):
     if isinstance(obj, Title):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return { 'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'subtitles': obj.subtitles, 'sections': obj.sections, 'header': obj.header, 'enum': obj.enum}
+        return { 'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subtitles': obj.subtitles, 'sections': obj.sections}
     elif isinstance(obj, Subtitle):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return { 'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'sections': obj.sections, 'parts': obj.parts, 'header': obj.header, 'enum': obj.enum}
+        return { 'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'sections': obj.sections, 'parts': obj.parts}
     elif isinstance(obj, Part):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'sections': obj.sections, 'header': obj.header, 'enum': obj.enum}
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'sections': obj.sections, 'subparts': obj.subparts}
     elif isinstance(obj, Section):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subsections': obj.subsections, 'paragraphs': obj.paragraphs}
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subsections': obj.subsections, 'paragraphs': obj.paragraphs, 'quoted_blocks': obj.quoted_blocks}
     elif isinstance(obj, Subsection):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum}
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'paragraphs': obj.paragraphs}
     elif isinstance(obj, Paragraph):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subparagraphs': obj.subparagraphs}
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subparagraphs': obj.subparagraphs, 'quoted_blocks': obj.quoted_blocks}
     elif isinstance(obj, Subparagraph):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum}
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'clauses': obj.clauses, 'quoted_blocks': obj.quoted_blocks}
+    elif isinstance(obj, Clause):
+        # Return a dictionary representation of the User object
+        # You can choose which attributes to include
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'quoted_blocks': obj.quoted_blocks}
+    elif isinstance(obj, Subclause):
+        # Return a dictionary representation of the User object
+        # You can choose which attributes to include
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'quoted_blocks': obj.quoted_blocks}
+    elif isinstance(obj, Subpart):
+        # Return a dictionary representation of the User object
+        # You can choose which attributes to include
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'sections': obj.sections}
+    elif isinstance(obj, QuotedBlock):
+        # Return a dictionary representation of the User object
+        # You can choose which attributes to include
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subparagraphs': obj.subparagraphs, 'paragraphs': obj.paragraphs, 'clauses': obj.clauses, 'sections': obj.sections, 'subsections': obj.subsections, 'after_quoted_blocks': obj.after_quoted_block}
     # You could add more isinstance checks for other custom classes here
     # For any other type it doesn't know, raise a TypeError as per default behavior
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
-
 
 def parse_toc(toc, soup):
     titles = []
@@ -161,13 +279,12 @@ def parse_toc(toc, soup):
         # print("\nFound using CSS selector:")
         # print(target_section)
         entries = toc.select('toc-entry')
-        currTitle = None
-        currSubtitle = None
-        currPart = None
+        curr_title = None
+        curr_subtitle = None
+        current_part = None
         for entry in entries:
             lines = [line.strip() for line in entry.text.splitlines()]
             full_text = '\n'.join(lines)
-
             idref = entry.attrs['idref'] if entry.has_attr('idref') else None
             level = entry.attrs['level']
             header_text = None
@@ -192,67 +309,121 @@ def parse_toc(toc, soup):
                 (enum, header) = extract_section_identifier(' '.join(full_text.split()))
                 header_text = header
                 enum_text = enum
-                tag = entry.parent.parent.parent.parent.select_one(f"section:has(enum:contains(\"{enum_text}\"))")
+                tag = entry.parent.parent.parent.parent.select_one(f"section:has(enum:-soup-contains(\"{enum_text}\"))")
                 idref = tag.attrs['id'] if tag is not None else idref
-
             if level == 'title':
-                text = tag.find('text', recursive=False) if tag is not None else None
-                currTitle = Title(' '.join(text.text.split()) if text is not None else None, idref)
-                currTitle.header = header_text
-                currTitle.enum = enum_text
-                titles.append(currTitle)
-                currSubtitle = None
-                currPart = None
+                curr_title = parse_title(tag)
+                titles.append(curr_title)
+                curr_subtitle = None
+                current_part = None
             elif level == 'subtitle':
-                if currTitle is not None:
-                    text = tag.find('text', recursive=False) if tag is not None else None
-                    currSubtitle = Subtitle(' '.join(text.text.split()) if text is not None else None, idref)
-                    currSubtitle.header = header_text
-                    currSubtitle.enum = enum_text
-                    currTitle.add_subtitle(currSubtitle)
-                    currSubtitle.set_parent(currTitle)
+                if curr_title is not None:
+                    curr_subtitle = parse_subtitle(tag)
+                    if curr_subtitle is not None:
+                        curr_title.add_subtitle(curr_subtitle)
+                        if curr_subtitle is None:
+                            print("WTF")
+                        if curr_title is None:
+                            print("WTF2")
+                        curr_subtitle.set_parent(curr_title)
                 else:
                     pass
                     # print(f"Warning: Subtitle '{text}' found without a parent title")
             elif level == 'part':
-                if currSubtitle is not None:
-                    text = tag.find('text', recursive=False)
-                    currPart = Part(' '.join(text.text.split()) if text is not None else None, idref)
-                    currPart.header = header_text
-                    currPart.enum = enum_text
-                    currSubtitle.add_part(currPart)
-                    currPart.set_parent(currSubtitle)
+                if curr_subtitle is not None:
+                    current_part = parse_part(tag)
+                    if current_part is not None:
+                        curr_subtitle.add_part(current_part)
+                        current_part.set_parent(curr_subtitle)
                 else:
                     pass
                     # print(f"Warning: Part '{text}' found without a parent subtitle")
             elif level == 'section':
-                text = tag.find('text', recursive=False) if tag is not None else None
-                newSection = Section(' '.join(text.text.split()) if text is not None else full_text, idref)
-                newSection.header = header_text
-                newSection.enum = enum_text
-                newSection.add_subsection(parse_subsections(tag))
-                newSection.add_paragraph(parse_paragraphs(tag))
-                if currPart is not None:
-                    currPart.add_section(newSection)
-                    newSection.set_parent(currPart)
-                elif currSubtitle is not None:
-                    currSubtitle.add_section(newSection)
-                    newSection.set_parent(currSubtitle)
-                elif currTitle is not None:
+                section = parse_section(tag)
+                if section is None:
+                    continue
+                #if current_part is not None:
+                #    current_part.add_section(section)
+                #    section.set_parent(current_part)
+                elif curr_subtitle is not None:
+                    curr_subtitle.add_section(section)
+                    section.set_parent(curr_subtitle)
+                elif curr_title is not None:
                     # If no subtitle but we have a title, add directly to title
                     # print(f"Warning: Section '{text}' has no parent subtitle, adding to title")
-                    currTitle.add_section(newSection)  # Assuming Title class can hold sections directly
-                    newSection.set_parent(currTitle)
+                    curr_title.add_section(section)  # Assuming Title class can hold sections directly
+                    section.set_parent(curr_title)
                 else:
                     pass
                     # print(f"Warning: Section '{text}' found without a parent title or subtitle")
-
                 if tag is not None:
                     # print(' '.join(tag.text.split()))
                     # print(tag.text)
                     # print('\n'.join(tag.text.rsplit('\n')))
                     pass  # break
     return titles
+
+def parse_sections(entry):
+    sections_list = []
+    if entry is None:
+        return sections_list
+    sections = entry.find_all('section', recursive=False)
+    for section in sections:
+        section_obj = parse_section(section)
+        if section_obj is not None:
+            sections_list.append(section_obj)
+    return sections_list
+
+def parse_section(section):
+    if section is None:
+        return None
+    header = section.find('header', recursive=False)
+    enum = section.find('enum', recursive=False)
+    text = section.find('text', recursive=False)
+    section_obj = Section(' '.join(text.text.split()) if text is not None else None, section.attrs['id'])
+    section_obj.header = header.text if header is not None else None
+    section_obj.enum = enum.text if enum is not None else None
+    section_obj.parent = section.parent
+    section_obj.add_subsection(parse_subsections(section))
+    section_obj.add_paragraph(parse_paragraphs(section))
+    section_obj.add_quoted_block(parse_quoted_blocks(section))
+    return section_obj
+
+def parse_part(part):
+    if part is None:
+        return None
+    header = part.find('header', recursive=False)
+    enum = part.find('enum', recursive=False)
+    text = part.find('text', recursive=False)
+    part_obj = Part(' '.join(text.text.split()) if text is not None else None, part.attrs['id'])
+    part_obj.add_subparts(parse_subparts(part))
+    part_obj.add_sections(parse_sections(part))
+    part_obj.header = header.text
+    part_obj.enum = enum.text
+    return part_obj
+
+def parse_title(title):
+    if title is None:
+        return None
+    header = title.find('header', recursive=False)
+    enum = title.find('enum', recursive=False)
+    text = title.find('text', recursive=False)
+    title_obj = Title(' '.join(text.text.split()) if text is not None else None, title.attrs['id'])
+    title_obj.header = header.text
+    title_obj.enum = enum.text
+    return title_obj
+
+def parse_subtitle(subtitle):
+    if subtitle is None:
+        return None
+    header = subtitle.find('header', recursive=False)
+    enum = subtitle.find('enum', recursive=False)
+    text = subtitle.find('text', recursive=False)
+    subtitle_obj = Subtitle(' '.join(text.text.split()) if text is not None else None, subtitle.attrs['id'])
+    subtitle_obj.header = header.text
+    subtitle_obj.enum = enum.text
+    return subtitle_obj
+
 
 def parse_subsections(entry):
     ss = []
@@ -265,57 +436,77 @@ def parse_subsections(entry):
             ss.append(parse_toc(toc, entry))
         else:
             try:
-
                 lines = [line.strip() for line in subsection.text.splitlines()]
-
-                subsec = Subsection('\n'.join(lines), subsection.attrs['id'])
                 header = subsection.select_one('header')
                 enum = subsection.select_one('enum')
-                subsec.header = header.text if header is not None else None
-                subsec.enum = enum.text if enum is not None else None
-                subsection.parent = entry
-                ss.append(subsec)
+                subsection_obj = Subsection('\n'.join(lines), subsection.attrs['id'])
+                subsection_obj.header = header.text if header is not None else None
+                subsection_obj.enum = enum.text if enum is not None else None
+                subsection_obj.parent = entry
+                subsection_obj.add_quoted_block(parse_quoted_blocks(subsection))
+                subsection_obj.add_paragraphs(parse_paragraphs(subsection))
+                ss.append(subsection_obj)
             except Exception as e:
                 print(f"Error parsing subsection: {e}")
     return ss
-
 
 def parse_paragraphs(entry):
     pghs = []
     if entry is None:
         return pghs
     paragraphs = entry.find_all('paragraph', recursive=False)
-    for subsection in paragraphs:
+    for paragraph in paragraphs:
 
-        paragraph_text = subsection.select_one('text')
-        enum = subsection.select_one('enum')
+        paragraph_text = paragraph.select_one('text')
+        enum = paragraph.select_one('enum')
         lines = [line.strip() for line in paragraph_text.text.splitlines()]
 
-        paragraph = Paragraph('\n'.join(lines), subsection.attrs['id'])
-        paragraph.header = paragraph_text.text if paragraph_text is not None else None
-        paragraph.enum = enum.text if enum is not None else None
-        paragraph.parent = entry
-        paragraph.add_subparagraph(parse_subparagraphs(subsection))
-        pghs.append(paragraph)
+        paragraph_obj = Paragraph('\n'.join(lines), paragraph.attrs['id'])
+        paragraph_obj.header = paragraph_text.text if paragraph_text is not None else None
+        paragraph_obj.enum = enum.text if enum is not None else None
+        paragraph_obj.parent = entry
+        paragraph_obj.add_subparagraph(parse_subparagraphs(paragraph))
+        paragraph_obj.add_quoted_block(parse_quoted_blocks(paragraph))
+        pghs.append(paragraph_obj)
     return pghs
+
+def parse_subparts(entry):
+    sps = []
+    if entry is None:
+        return sps
+    subparts = entry.find_all('subpart', recursive=False)
+    for subpart in subparts:
+
+        paragraph_text = subpart.select_one('text')
+        enum = subpart.select_one('enum')
+        lines = [line.strip() for line in paragraph_text.text.splitlines()]
+
+        subpart_obj = Subpart('\n'.join(lines), subpart.attrs['id'])
+        subpart_obj.header = paragraph_text.text if paragraph_text is not None else None
+        subpart_obj.enum = enum.text if enum is not None else None
+        subpart_obj.parent = entry
+        subpart_obj.add_sections(parse_sections(subpart))
+        sps.append(subpart_obj)
+    return sps
 
 def parse_subparagraphs(entry):
     pghs = []
     if entry is None:
         return pghs
-    subsections = entry.find_all('subparagraph', recursive=False)
-    for subsection in subsections:
-        paragraph_text = subsection.select_one('text')
-        enum = subsection.select_one('enum')
-        lines = [line.strip() for line in paragraph_text.text.splitlines()]
+    subparagraphs = entry.find_all('subparagraph', recursive=False)
+    for subparagraph in subparagraphs:
+        subparagraph_text = subparagraph.select_one('text')
+        enum = subparagraph.select_one('enum')
+        lines = [line.strip() for line in subparagraph_text.text.splitlines()]
 
-        paragraph = Subparagraph('\n'.join(lines), subsection.attrs['id'])
-        paragraph.header = paragraph_text.text if paragraph_text is not None else None
-        paragraph.enum = enum.text if enum is not None else None
-        paragraph.parent = entry
-        pghs.append(paragraph)
+        subparagraph_obj = Subparagraph('\n'.join(lines), subparagraph.attrs['id'])
+        subparagraph_obj.header = subparagraph_text.text if subparagraph_text is not None else None
+        subparagraph_obj.enum = enum.text if enum is not None else None
+        subparagraph_obj.parent = entry
+        subparagraph_obj.add_quoted_block(parse_quoted_blocks(subparagraph))
+        subparagraph_obj.add_clause(parse_clauses(subparagraph))
+        pghs.append(subparagraph_obj)
     return pghs
-
 
 def parse_findings(soup):
     titles = []
@@ -381,16 +572,36 @@ def parse_findings(soup):
                 #pass  # break
     return titles
 
-
 def parse_document(filename: str):
     warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
     # Open the XML file and parse it with BeautifulSoup
-    with open(filename, 'r') as file:
+    with open(filename, 'r', encoding='utf-8') as file:
         soup = BeautifulSoup(file, 'html.parser')
 
-    toc = soup.select_one('section:has(header:contains("Table of contents"))')
-    findings = soup.select_one('section:has(header:contains("Findings"))')
+    def convert_quotes():
+        # Parse the XML text
+
+        # Find all quote tags
+        quote_tags = soup.find_all('quote')
+
+        # Replace each quote tag with quoted text
+        for quote in quote_tags:
+            # Get the text content
+            text = quote.get_text(strip=True)
+            # Replace the quote tag with quoted text
+            quote.replace_with(f'"{text}"')
+
+        # Get the modified text
+        return soup.get_text(strip=True)
+
+    # Example usage
+    xml_text = '''Your XML text here'''
+    result = convert_quotes(xml_text)
+    print(result)
+
+    toc = soup.select_one('section:has(header:-soup-contains("Table of contents"))')
+    findings = soup.select_one('section:has(header:-soup-contains("Findings"))')
     if toc:
         return parse_toc(toc, soup)
     elif findings:
@@ -398,7 +609,40 @@ def parse_document(filename: str):
     else:
         return []
 
+def parse_quoted_blocks(entry):
+    qbs = []
+    if entry is None:
+        return qbs
+    quoted_blocks = entry.find_all('quoted-block', recursive=False)
+    for quoted_block in quoted_blocks:
+        aqb = quoted_block.find('after-quoted-block', recursive=False)
+        block = QuotedBlock(quoted_block.text, quoted_block.attrs['id'])
+        block.set_after_quoted_block(aqb.text if aqb is not None else None)
+        block.add_sections(parse_sections(quoted_block))
+        block.add_subsections(parse_subsections(quoted_block))
+        block.add_paragraphs(parse_paragraphs(quoted_block))
+        block.add_subparagraphs(parse_subparagraphs(quoted_block))
+        block.add_clauses(parse_clauses(quoted_block))
+        qbs.append(block)
+    return qbs
 
+def parse_clauses(entry):
+    cl = []
+    if entry is None:
+        return cl
+    clauses = entry.find_all('clauses', recursive=False)
+    for clause in clauses:
+        cl.append(Clause(clause.text, clause.attrs['id']))
+    return cl
+
+def parse_subclauses(entry):
+    scl = []
+    if entry is None:
+        return scl
+    subclauses = entry.find_all('clauses', recursive=False)
+    for subclause in subclauses:
+        scl.append(Subclause(subclause.text, subclause.attrs['id']))
+    return scl
 
 def debug_print(titles: list[Title]):
     print(f"This bill has {len(titles)} titles")
