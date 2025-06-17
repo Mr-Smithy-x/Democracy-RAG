@@ -78,22 +78,6 @@ class QuotedBlock(Node):
         self.after_quoted_block = param
 
 
-class Clause(Node):
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.quoted_blocks = []
-
-    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
-        self.quoted_blocks.extend(quoted_blocks)
-
-class Item(Node):
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-
 class Subclause(Node):
     def __init__(self, text, refId):
         super().__init__()
@@ -103,6 +87,27 @@ class Subclause(Node):
 
     def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
         self.quoted_blocks.extend(quoted_blocks)
+
+
+class Clause(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.quoted_blocks = []
+        self.subclauses = []
+
+    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
+        self.quoted_blocks.extend(quoted_blocks)
+
+    def add_subclauses(self, subclauses: list[Subclause]):
+        self.subclauses.extend(subclauses)
+
+class Item(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
 
 class Subparagraph(Node):
     def __init__(self, text, refId):
@@ -256,7 +261,7 @@ def custom_encoder(obj):
     elif isinstance(obj, Clause):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'quoted_blocks': obj.quoted_blocks}
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'quoted_blocks': obj.quoted_blocks, 'subclauses': obj.subclauses}
     elif isinstance(obj, Subclause):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
@@ -459,10 +464,11 @@ def parse_paragraphs(entry):
 
         paragraph_text = paragraph.select_one('text')
         enum = paragraph.select_one('enum')
+        header = paragraph.find('header', recursive=False)
         lines = [line.strip() for line in paragraph_text.text.splitlines()]
 
         paragraph_obj = Paragraph('\n'.join(lines), paragraph.attrs['id'])
-        paragraph_obj.header = paragraph_text.text if paragraph_text is not None else None
+        paragraph_obj.header = header.text if header is not None else None
         paragraph_obj.enum = enum.text if enum is not None else None
         paragraph_obj.parent = entry
         paragraph_obj.add_subparagraph(parse_subparagraphs(paragraph))
@@ -477,12 +483,14 @@ def parse_subparts(entry):
     subparts = entry.find_all('subpart', recursive=False)
     for subpart in subparts:
 
-        paragraph_text = subpart.select_one('text')
+        subpart_text = subpart.select_one('text')
         enum = subpart.select_one('enum')
-        lines = [line.strip() for line in paragraph_text.text.splitlines()]
+
+        header = subpart.find('header', recursive=False)
+        lines = [line.strip() for line in subpart_text.text.splitlines()]
 
         subpart_obj = Subpart('\n'.join(lines), subpart.attrs['id'])
-        subpart_obj.header = paragraph_text.text if paragraph_text is not None else None
+        subpart_obj.header = header.text if header is not None else None
         subpart_obj.enum = enum.text if enum is not None else None
         subpart_obj.parent = entry
         subpart_obj.add_sections(parse_sections(subpart))
@@ -497,10 +505,11 @@ def parse_subparagraphs(entry):
     for subparagraph in subparagraphs:
         subparagraph_text = subparagraph.select_one('text')
         enum = subparagraph.select_one('enum')
+        header = subparagraph.find('header', recursive=False)
         lines = [line.strip() for line in subparagraph_text.text.splitlines()]
 
         subparagraph_obj = Subparagraph('\n'.join(lines), subparagraph.attrs['id'])
-        subparagraph_obj.header = subparagraph_text.text if subparagraph_text is not None else None
+        subparagraph_obj.header = header.text if header is not None else None
         subparagraph_obj.enum = enum.text if enum is not None else None
         subparagraph_obj.parent = entry
         subparagraph_obj.add_quoted_block(parse_quoted_blocks(subparagraph))
@@ -577,6 +586,7 @@ def parse_document(filename: str):
 
     # Open the XML file and parse it with BeautifulSoup
     with open(filename, 'r', encoding='utf-8') as file:
+        # Example usage
         soup = BeautifulSoup(file, 'html.parser')
 
     def convert_quotes():
@@ -595,9 +605,8 @@ def parse_document(filename: str):
         # Get the modified text
         return soup.get_text(strip=True)
 
-    # Example usage
-    xml_text = '''Your XML text here'''
-    result = convert_quotes(xml_text)
+
+    result = convert_quotes()
     print(result)
 
     toc = soup.select_one('section:has(header:-soup-contains("Table of contents"))')
@@ -616,7 +625,11 @@ def parse_quoted_blocks(entry):
     quoted_blocks = entry.find_all('quoted-block', recursive=False)
     for quoted_block in quoted_blocks:
         aqb = quoted_block.find('after-quoted-block', recursive=False)
-        block = QuotedBlock(quoted_block.text, quoted_block.attrs['id'])
+
+        lines = [line.strip() for line in quoted_block.text.splitlines()]
+        full_text = '\n'.join(lines)
+
+        block = QuotedBlock(full_text, quoted_block.attrs['id'])
         block.set_after_quoted_block(aqb.text if aqb is not None else None)
         block.add_sections(parse_sections(quoted_block))
         block.add_subsections(parse_subsections(quoted_block))
@@ -630,18 +643,32 @@ def parse_clauses(entry):
     cl = []
     if entry is None:
         return cl
-    clauses = entry.find_all('clauses', recursive=False)
+    clauses = entry.find_all('clause', recursive=False)
     for clause in clauses:
-        cl.append(Clause(clause.text, clause.attrs['id']))
+
+        clause_text = clause.select_one('text')
+        enum = clause.select_one('enum')
+        header = clause.find('header', recursive=False)
+        clause_obj = Clause(clause_text.text if clause_text is not None else None, clause.attrs['id'])
+        clause_obj.header = header.text if header is not None else None
+        clause_obj.enum = enum.text if enum is not None else None
+        clause.add_subclauses(parse_subclauses(clause))
+        cl.append(clause_obj)
     return cl
 
 def parse_subclauses(entry):
     scl = []
     if entry is None:
         return scl
-    subclauses = entry.find_all('clauses', recursive=False)
+    subclauses = entry.find_all('subclause', recursive=False)
     for subclause in subclauses:
-        scl.append(Subclause(subclause.text, subclause.attrs['id']))
+        subclause_text = subclause.select_one('text')
+        enum = subclause.select_one('enum')
+        header = subclause.find('header', recursive=False)
+        subclause_obj = Subclause(subclause_text.text if subclause_text is not None else None, subclause.attrs['id'])
+        subclause_obj.header = header.text if header is not None else None
+        subclause_obj.enum = enum.text if enum is not None else None
+        scl.append(subclause_obj)
     return scl
 
 def debug_print(titles: list[Title]):
