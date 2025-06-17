@@ -177,6 +177,7 @@ class USDocumentParser:
             block.add_paragraphs(self.parse_paragraphs(quoted_block))
             block.add_subparagraphs(self.parse_subparagraphs(quoted_block))
             block.add_clauses(self.parse_clauses(quoted_block))
+            block.add_items(self.parse_items(quoted_block))
             qbs.append(block)
         return qbs
 
@@ -209,6 +210,7 @@ class USDocumentParser:
             subclause_obj = Subclause(subclause_text.text if subclause_text is not None else None, subclause.attrs['id'])
             subclause_obj.header = header.text if header is not None else None
             subclause_obj.enum = enum.text if enum is not None else None
+            subclause_obj.add_items(self.parse_items(subclause))
             scl.append(subclause_obj)
         return scl
 
@@ -424,3 +426,19 @@ class USDocumentParser:
             return self.parse_findings(soup)
         else:
             return []
+
+    def parse_items(self, entry):
+        all_items = []
+        if entry is None:
+            return all_items
+        items = entry.find_all('item', recursive=False)
+        for item in items:
+            item_text = item.select_one('text')
+            enum = item.select_one('enum')
+            header = item.find('header', recursive=False)
+            subclause_obj = Subclause(item.text,item.attrs['id'])
+            subclause_obj.header = header.text if header is not None else None
+            subclause_obj.enum = enum.text if enum is not None else None
+            subclause_obj.add_items(self.parse_items(item))
+            all_items.append(subclause_obj)
+        return all_items

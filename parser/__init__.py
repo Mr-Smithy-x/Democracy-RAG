@@ -1,4 +1,6 @@
-from parser.models import Title, Subtitle, Part, Section, Subsection, Paragraph, Subparagraph, Clause, Subclause, Subpart, QuotedBlock
+from parser.models import Title, Subtitle, Part, Section, Subsection, Paragraph, Subparagraph, Clause, Subclause, \
+    Subpart, QuotedBlock, Item
+
 
 def custom_encoder(obj):
     if isinstance(obj, Title):
@@ -45,6 +47,10 @@ def custom_encoder(obj):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
         return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subparagraphs': obj.subparagraphs, 'paragraphs': obj.paragraphs, 'clauses': obj.clauses, 'sections': obj.sections, 'subsections': obj.subsections, 'after_quoted_blocks': obj.after_quoted_block}
+    elif isinstance(obj, Item):
+        # Return a dictionary representation of the User object
+        # You can choose which attributes to include
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum}
     # You could add more isinstance checks for other custom classes here
     # For any other type it doesn't know, raise a TypeError as per default behavior
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")

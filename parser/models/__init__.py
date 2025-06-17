@@ -12,6 +12,12 @@ class Node:
     def get_parent(self):
         return self.parent
 
+class Item(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+
 class QuotedBlock(Node):
     def __init__(self, text, refId):
         super().__init__()
@@ -23,6 +29,7 @@ class QuotedBlock(Node):
         self.subparagraphs = []
         self.clauses = []
         self.subparts = []
+        self.items = []
         self.after_quoted_block = None
 
     def add_subparts(self, subpart):
@@ -46,15 +53,23 @@ class QuotedBlock(Node):
     def set_after_quoted_block(self, param):
         self.after_quoted_block = param
 
+    def add_items(self, items: list[Item]):
+        self.items.extend(items)
+
 class Subclause(Node):
     def __init__(self, text, refId):
         super().__init__()
         self.text = text
         self.refId = refId
         self.quoted_blocks = []
+        self.items = []
 
     def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
         self.quoted_blocks.extend(quoted_blocks)
+
+    def add_items(self, items: list[Item]):
+        self.items.extend(items)
+
 
 class Clause(Node):
     def __init__(self, text, refId):
@@ -69,12 +84,6 @@ class Clause(Node):
 
     def add_subclauses(self, subclauses: list[Subclause]):
         self.subclauses.extend(subclauses)
-
-class Item(Node):
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
 
 class Subparagraph(Node):
     def __init__(self, text, refId):
