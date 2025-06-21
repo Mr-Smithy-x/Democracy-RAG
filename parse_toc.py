@@ -1,4 +1,5 @@
 import json
+import os
 import warnings
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
@@ -6,8 +7,9 @@ from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from parser.models import Node
 
 
-class NodeObject(Node):
+class NodeObject:
     def __init__(self, id, header, enum, name):
+        super().__init__()
         self.id = id
         if name is not None:
             self.title = f'{name} {enum} {header}'
@@ -66,6 +68,46 @@ class TableOfContents:
 
         result = convert_quotes()
 
+    def _parse_section(self, section):
+        section_id = section.attrs['id']
+        section_header = ' '.join(section.find('header', recursive=False).text.split())
+        section_enum = ' '.join(section.find('enum', recursive=False).text.split())
+        section_text = ' '.join(section.find('text', recursive=False).text.split() if section.find('text', recursive=False) is not None else ''.split())
+        section_obj = NodeObject(section_id, section_header, section_enum, section.name.capitalize())
+        section_obj.details = section.text
+        section_obj.description = section_text
+        return section_obj
+
+    def _parse_part(self, part):
+        part_id = part.attrs['id']
+        part_header = ' '.join(part.find('header', recursive=False).text.split())
+        part_enum = ' '.join(part.find('enum', recursive=False).text.split())
+        part_text = ' '.join(part.find('text', recursive=False).text.split() if part.find('text', recursive=False) is not None else ''.split())
+        part_obj = NodeObject(part_id, part_header, part_enum, part.name.capitalize())
+        part_obj.details = part.text
+        part_obj.description = part_text
+        return part_obj
+
+    def _parse_subtitle(self, subtitle):
+        subtitle_id = subtitle.attrs['id']
+        subtitle_header = ' '.join(subtitle.find('header', recursive=False).text.split())
+        subtitle_enum = ' '.join(subtitle.find('enum', recursive=False).text.split())
+        subtitle_text = ' '.join(subtitle.find('text', recursive=False).text.split() if subtitle.find('text', recursive=False) is not None else ''.split())
+        subtitle_obj = NodeObject(subtitle_id, subtitle_header, subtitle_enum, subtitle.name.capitalize())
+        subtitle_obj.details = subtitle.text
+        subtitle_obj.description = subtitle_text
+        return subtitle_obj
+
+    def _parse_title(self, title):
+        id = title.attrs['id']
+        enum = ' '.join(title.find('enum', recursive=False).text.split())
+        header = ' '.join(title.find('header', recursive=False).text.split())
+        text = ' '.join(title.find('text', recursive=False).text.split() if title.find('text', recursive=False) is not None else ''.split())
+
+        title_obj = NodeObject(id, header, enum, title.name.capitalize())
+        title_obj.description = text
+        return title_obj
+
     def parse(self):
         official_title =  ' '.join(self.soup.select_one('form > official-title').text.split())
         bill_title = ' '.join(self.soup.select_one('dublinCore > dc\\:title').text.split())
@@ -77,60 +119,29 @@ class TableOfContents:
             title = self.soup.select_one(f"title[id='{title_xml.attrs['idref']}']")
             subtitles = title.find_all("subtitle", recursive=False)
             sections = title.find_all("section", recursive=False)
-
-
-            id = title.attrs['id']
-            enum = ' '.join(title.find('enum', recursive=False).text.split())
-            header = ' '.join(title.find('header', recursive=False).text.split())
-
-            title_obj = NodeObject(id, header, enum, title.name.capitalize())
-
+            title_obj = self._parse_title(title)
             if len(sections) == 0:
                 for subtitle in subtitles:
-                    subtitle_id = subtitle.attrs['id']
-                    subtitle_header = ' '.join(subtitle.find('header', recursive=False).text.split())
-                    subtitle_enum = ' '.join(subtitle.find('enum', recursive=False).text.split())
-
-                    subtitle_obj = NodeObject(subtitle_id, subtitle_header, subtitle_enum, subtitle.name.capitalize())
-                    title_obj.add_child(subtitle_id)
+                    subtitle_obj = self._parse_subtitle(subtitle)
+                    title_obj.add_child(subtitle_obj.id)
                     sections = subtitle.find_all("section", recursive=False)
                     parts = subtitle.find_all("part", recursive=False)
                     for section in sections:
-                        section_id = section.attrs['id']
-                        section_header = ' '.join(section.find('header', recursive=False).text.split())
-                        section_enum = ' '.join(section.find('enum', recursive=False).text.split())
-
-                        section_obj = NodeObject(section_id, section_header, section_enum, section.name.capitalize())
-                        section_obj.description = section.text
-
-                        subtitle_obj.add_child(section_id)
+                        section_obj = self._parse_section(section)
+                        subtitle_obj.add_child(section_obj.id)
                         self.titles[section_obj.id] = section_obj
-
                     for part in parts:
-                        part_id = part.attrs['id']
-                        part_header = ' '.join(part.find('header', recursive=False).text.split())
-                        part_enum = ' '.join(part.find('enum', recursive=False).text.split())
-
-                        part_obj = NodeObject(part_id, part_header, part_enum, part.name.capitalize())
-                        part_obj.description = part.text
-
-                        subtitle_obj.add_child(part_id)
+                        part_obj = self._parse_part(part)
+                        subtitle_obj.add_child(part_obj.id)
                         self.titles[part_obj.id] = part_obj
-
-                    self.titles[subtitle_id] = subtitle_obj
+                    self.titles[subtitle_obj.id] = subtitle_obj
             else:
                 for section in sections:
-                    section_id = section.attrs['id']
-                    section_header = ' '.join(section.find('header', recursive=False).text.split())
-                    section_enum = ' '.join(section.find('enum', recursive=False).text.split())
-
-                    section_obj = NodeObject(section_id, section_header, section_enum, section.name.capitalize())
-                    section_obj.description = section.text
-
-                    title_obj.add_child(section_id)
-                    self.titles[section_id] = section_obj
-            root.add_child(id)
-            self.titles[id] = title_obj
+                    section_obj = self._parse_section(section)
+                    title_obj.add_child(section_obj.id)
+                    self.titles[section_obj.id] = section_obj
+            root.add_child(title_obj.id)
+            self.titles[title_obj.id] = title_obj
         self.titles[root.id] = root
 
 
@@ -148,6 +159,9 @@ def main():
     toc.parse()
 
     jsonText = json.dumps(toc.titles, default=custom_encoder, indent=2)
+
+    os.mkdir("json") if not os.path.exists("json") else None
+
     with open(f"json/{bill}.json", "w") as outfile:
         outfile.write(jsonText)
 
