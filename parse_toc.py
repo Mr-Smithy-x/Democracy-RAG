@@ -72,7 +72,7 @@ class TableOfContents:
         root = NodeObject('root', bill_title, '1', None)
         root.description = bill_title
         root.details = official_title
-        titles = self.soup.select('section > toc > toc-entry[level="title"]')
+        titles = self.soup.select('legis-body > section > toc > toc-entry[level="title"]')
         for title_xml in titles:
             title = self.soup.select_one(f"title[id='{title_xml.attrs['idref']}']")
             subtitles = title.find_all("subtitle", recursive=False)
