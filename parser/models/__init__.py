@@ -1,4 +1,5 @@
 
+
 class Node:
 
     def __init__(self):
@@ -12,11 +13,201 @@ class Node:
     def get_parent(self):
         return self.parent
 
+
+class SubItem(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+
+
 class Item(Node):
     def __init__(self, text, refId):
         super().__init__()
         self.text = text
         self.refId = refId
+        self.subitems = []
+
+    def add_subitem(self, subitem: SubItem):
+        self.subitems.append(subitem)
+
+    def add_subitems(self, subitems: list[SubItem]):
+        self.subitems.extend(subitems)
+
+
+class Subclause(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.quoted_blocks = []
+        self.items = []
+
+    def add_quoted_block(self, quoted_blocks: list):
+        self.quoted_blocks.extend(quoted_blocks)
+
+    def add_items(self, items: list[Item]):
+        self.items.extend(items)
+
+class Clause(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.quoted_blocks = []
+        self.subclauses = []
+
+    def add_quoted_block(self, quoted_blocks: list):
+        self.quoted_blocks.extend(quoted_blocks)
+
+    def add_subclauses(self, subclauses: list[Subclause]):
+        self.subclauses.extend(subclauses)
+
+
+
+class Subparagraph(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.clauses = []
+        self.quoted_blocks = []
+
+    def add_quoted_block(self, quoted_blocks: list):
+        self.quoted_blocks.extend(quoted_blocks)
+
+    def add_clause(self, clauses: list[Clause]):
+        self.clauses.extend(clauses)
+
+class Paragraph(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.subparagraphs = []
+        self.quoted_blocks = []
+
+    def add_subparagraph(self, subparagraphs: list[Subparagraph]):
+        self.subparagraphs.extend(subparagraphs)
+
+    def add_quoted_block(self, quoted_blocks: list):
+        self.quoted_blocks.extend(quoted_blocks)
+
+
+
+class Subsection(Node):
+
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.quoted_blocks = []
+        self.paragraphs = []
+
+    def add_quoted_block(self, quoted_blocks: list):
+        self.quoted_blocks.extend(quoted_blocks)
+
+    def add_paragraphs(self, paragraphs: list[Paragraph]):
+        self.paragraphs.extend(paragraphs)
+
+
+class Section(Node):
+
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.subsections = []
+        self.paragraphs = []
+        self.quoted_blocks = []
+
+    def add_subsection(self, subsections: list[Subsection]):
+        self.subsections.extend(subsections)
+
+    def add_paragraph(self, paragraphs: list[Paragraph]):
+        self.paragraphs.extend(paragraphs)
+
+    def add_quoted_block(self, quoted_blocks: list):
+        self.quoted_blocks.extend(quoted_blocks)
+
+
+class Subpart(Node):
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.sections = []
+
+    def add_sections(self, sections: list[Section]):
+        self.sections.extend(sections)
+
+
+class Part(Node):
+
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.sections = []
+        self.subparts = []
+
+    def add_sections(self, sections: list[Section]):
+        self.sections.extend(sections)
+
+    def add_section(self, section: Section):
+        self.sections.append(section)
+
+    def add_subparts(self, subparts: list[Subpart]):
+        self.subparts.extend(subparts)
+
+
+
+
+class Subtitle(Node):
+
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.sections = []
+        self.parts = []
+
+    def add_part(self, part: Part):
+        self.parts.append(part)
+
+    def add_section(self, section: Section):
+        self.sections.append(section)
+
+    def add_parts(self, parts: list[Part]):
+        self.parts.extend(parts)
+
+    def add_sections(self, sections: list[Section]):
+        self.sections.extend(sections)
+
+
+
+class Title(Node):
+
+    def __init__(self, text, refId):
+        super().__init__()
+        self.text = text
+        self.refId = refId
+        self.sections = []
+        self.subtitles = []
+
+    def add_subtitle(self, subtitle: Subtitle):
+        self.subtitles.append(subtitle)
+
+    def add_section(self, section: Section):
+        self.sections.append(section)
+
+    def add_subtitles(self, subtitles: list[Subtitle]):
+        self.subtitles.extend(subtitles)
+
+    def add_sections(self, sections: list[Section]):
+        self.sections.extend(sections)
+
+
 
 class QuotedBlock(Node):
     def __init__(self, text, refId):
@@ -30,6 +221,7 @@ class QuotedBlock(Node):
         self.clauses = []
         self.subparts = []
         self.items = []
+        self.titles = []
         self.after_quoted_block = None
 
     def add_subparts(self, subpart):
@@ -53,154 +245,8 @@ class QuotedBlock(Node):
     def set_after_quoted_block(self, param):
         self.after_quoted_block = param
 
-    def add_items(self, items: list[Item]):
+    def add_items(self, items: list):
         self.items.extend(items)
 
-class Subclause(Node):
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.quoted_blocks = []
-        self.items = []
-
-    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
-        self.quoted_blocks.extend(quoted_blocks)
-
-    def add_items(self, items: list[Item]):
-        self.items.extend(items)
-
-
-class Clause(Node):
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.quoted_blocks = []
-        self.subclauses = []
-
-    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
-        self.quoted_blocks.extend(quoted_blocks)
-
-    def add_subclauses(self, subclauses: list[Subclause]):
-        self.subclauses.extend(subclauses)
-
-class Subparagraph(Node):
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.clauses = []
-        self.quoted_blocks = []
-
-    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
-        self.quoted_blocks.extend(quoted_blocks)
-
-    def add_clause(self, clauses: list[Clause]):
-        self.clauses.extend(clauses)
-
-class Paragraph(Node):
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.subparagraphs = []
-        self.quoted_blocks = []
-
-    def add_subparagraph(self, subparagraphs: list[Subparagraph]):
-        self.subparagraphs.extend(subparagraphs)
-
-    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
-        self.quoted_blocks.extend(quoted_blocks)
-
-class Subsection(Node):
-
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.quoted_blocks = []
-        self.paragraphs = []
-
-    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
-        self.quoted_blocks.extend(quoted_blocks)
-
-    def add_paragraphs(self, paragraphs: list[Paragraph]):
-        self.paragraphs.extend(paragraphs)
-
-class Section(Node):
-
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.subsections = []
-        self.paragraphs = []
-        self.quoted_blocks = []
-
-    def add_subsection(self, subsections: list[Subsection]):
-        self.subsections.extend(subsections)
-
-    def add_paragraph(self, paragraphs: list[Paragraph]):
-        self.paragraphs.extend(paragraphs)
-
-    def add_quoted_block(self, quoted_blocks: list[QuotedBlock]):
-        self.quoted_blocks.extend(quoted_blocks)
-
-class Subpart(Node):
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.sections = []
-
-    def add_sections(self, sections: list[Section]):
-        self.sections.extend(sections)
-
-class Part(Node):
-
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.sections = []
-        self.subparts = []
-
-    def add_sections(self, sections: list[Section]):
-        self.sections.extend(sections)
-
-    def add_section(self, section: Section):
-        self.sections.append(section)
-
-    def add_subparts(self, subparts: list[Subpart]):
-        self.subparts.extend(subparts)
-
-class Subtitle(Node):
-
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.sections = []
-        self.parts = []
-
-    def add_part(self, part: Part):
-        self.parts.append(part)
-
-    def add_section(self, section: Section):
-        self.sections.append(section)
-
-class Title(Node):
-
-    def __init__(self, text, refId):
-        super().__init__()
-        self.text = text
-        self.refId = refId
-        self.sections = []
-        self.subtitles = []
-
-    def add_subtitle(self, subtitle: Subtitle):
-        self.subtitles.append(subtitle)
-
-    def add_section(self, section: Section):
-        self.sections.append(section)
+    def add_titles(self, items: list):
+        self.titles.extend(items)

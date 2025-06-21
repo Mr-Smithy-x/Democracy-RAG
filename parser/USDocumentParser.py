@@ -3,12 +3,46 @@ import warnings
 
 from bs4 import XMLParsedAsHTMLWarning, BeautifulSoup
 
-from parser import Section, Part, Title, Subtitle, Subsection, Paragraph, Subpart, Subparagraph, QuotedBlock, Clause, \
-    Subclause
+from parser import Section, Subsection, SubItem, Item, Subpart, Part, Subtitle, Title, QuotedBlock, Subclause, Clause, Subparagraph, \
+    Paragraph
+
 
 class USDocumentParser:
-    def __init__(self, doc):
-        self.filename = doc
+
+    soup: BeautifulSoup = None
+
+    def __init__(self, filename):
+        self.filename = filename
+        self.soup = None
+        self.init()
+
+    def set_filename(self, filename):
+        self.filename = filename
+        self.soup = None
+        self.init()
+
+    def init(self):
+        warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+        # Open the XML file and parse it with BeautifulSoup
+        with open(self.filename, 'r', encoding='utf-8') as file:
+            # Example usage
+            self.soup = BeautifulSoup(file, 'html.parser')
+        def convert_quotes():
+            # Parse the XML text
+
+            # Find all quote tags
+            quote_tags = self.soup.find_all('quote')
+
+            # Replace each quote tag with quoted text
+            for quote in quote_tags:
+                # Get the text content
+                text = quote.get_text(strip=True)
+                # Replace the quote tag with quoted text
+                quote.replace_with(f'"{text}"')
+
+            # Get the modified text
+            return self.soup.get_text(strip=True)
+        result = convert_quotes()
 
     def parse_sections(self, entry):
         sections_list = []
@@ -20,6 +54,28 @@ class USDocumentParser:
             if section_obj is not None:
                 sections_list.append(section_obj)
         return sections_list
+
+    def parse_parts(self, entry):
+        parts_list = []
+        if entry is None:
+            return parts_list
+        parts = entry.find_all('part', recursive=False)
+        for part in parts:
+            part_obj = self.parse_part(part)
+            if part_obj is not None:
+                parts_list.append(part_obj)
+        return parts_list
+
+    def parse_subtitles(self, entry):
+        subtitles_list = []
+        if entry is None:
+            return subtitles_list
+        subtitles = entry.find_all('subtitle', recursive=False)
+        for subtitle in subtitles:
+            subtitle_obj = self.parse_subtitle(subtitle)
+            if subtitle_obj is not None:
+                subtitles_list.append(subtitle_obj)
+        return subtitles_list
 
     def parse_section(self, section):
         if section is None:
@@ -58,6 +114,8 @@ class USDocumentParser:
         title_obj = Title(' '.join(text.text.split()) if text is not None else None, title.attrs['id'])
         title_obj.header = header.text
         title_obj.enum = enum.text
+        title_obj.add_subtitles(self.parse_subtitles(title))
+        title_obj.add_sections(self.parse_sections(title))
         return title_obj
 
     def parse_subtitle(self, subtitle):
@@ -69,33 +127,47 @@ class USDocumentParser:
         subtitle_obj = Subtitle(' '.join(text.text.split()) if text is not None else None, subtitle.attrs['id'])
         subtitle_obj.header = ' '.join(header.text.split())
         subtitle_obj.enum = enum.text
+        subtitle_obj.add_parts(self.parse_parts(subtitle))
+        subtitle_obj.add_sections(self.parse_sections(subtitle))
         return subtitle_obj
 
     def parse_subsections(self, entry):
         ss = []
+        titles = []
         if entry is None:
             return ss
         subsections = entry.find_all('subsection', recursive=False)
         for subsection in subsections:
             toc = subsection.select_one('quoted-block > toc')
-            if toc:
-                ss.append(self.parse_toc(toc, entry))
-            else:
-                try:
-                    lines = [line.strip() for line in subsection.text.splitlines()]
-                    header = subsection.select_one('header')
-                    enum = subsection.select_one('enum')
-                    text = subsection.find('text', recursive=False)
-                    subsection_obj = Subsection(' '.join(text.text.split()) if text is not None else None, subsection.attrs['id'])
-                    subsection_obj.header = ' '.join(header.text.split()) if header is not None else None
-                    subsection_obj.enum = enum.text if enum is not None else None
-                    subsection_obj.parent = entry
-                    subsection_obj.add_quoted_block(self.parse_quoted_blocks(subsection))
-                    subsection_obj.add_paragraphs(self.parse_paragraphs(subsection))
-                    ss.append(subsection_obj)
-                except Exception as e:
-                    print(f"Error parsing subsection: {e}")
+            #if toc:
+            #    titles = self.parse_toc(toc, entry)
+            #else:
+            try:
+                lines = [line.strip() for line in subsection.text.splitlines()]
+                header = subsection.select_one('header')
+                enum = subsection.select_one('enum')
+                text = subsection.find('text', recursive=False)
+                subsection_obj = Subsection(' '.join(text.text.split()) if text is not None else None, subsection.attrs['id'])
+                subsection_obj.header = ' '.join(header.text.split()) if header is not None else None
+                subsection_obj.enum = enum.text if enum is not None else None
+                subsection_obj.parent = entry
+                subsection_obj.add_quoted_block(self.parse_quoted_blocks(subsection))
+                subsection_obj.add_paragraphs(self.parse_paragraphs(subsection))
+                ss.append(subsection_obj)
+            except Exception as e:
+                print(f"Error parsing subsection: {e}")
         return ss
+
+    def parse_titles(self, entry):
+        titles_list = []
+        if entry is None:
+            return titles_list
+        titles = entry.find_all('title', recursive=False)
+        for title in titles:
+            title_obj = self.parse_title(title)
+            if title_obj is not None:
+                titles_list.append(title_obj)
+        return titles_list
 
     def parse_paragraphs(self, entry):
         pghs = []
@@ -178,6 +250,7 @@ class USDocumentParser:
             block.add_subparagraphs(self.parse_subparagraphs(quoted_block))
             block.add_clauses(self.parse_clauses(quoted_block))
             block.add_items(self.parse_items(quoted_block))
+            block.add_titles(self.parse_titles(quoted_block))
             qbs.append(block)
         return qbs
 
@@ -189,9 +262,13 @@ class USDocumentParser:
         for clause in clauses:
 
             clause_text = clause.select_one('text')
+
+            lines = [line.strip() for line in clause_text.text.splitlines()]
+            full_text = ' '.join(lines)
+
             enum = clause.select_one('enum')
             header = clause.find('header', recursive=False)
-            clause_obj = Clause(clause_text.text if clause_text is not None else None, clause.attrs['id'])
+            clause_obj = Clause(full_text, clause.attrs['id'])
             clause_obj.header = header.text if header is not None else None
             clause_obj.enum = enum.text if enum is not None else None
             clause_obj.add_subclauses(self.parse_subclauses(clause))
@@ -280,51 +357,6 @@ class USDocumentParser:
                     titles.append(curr_title)
                     curr_subtitle = None
                     current_part = None
-                elif level == 'subtitle':
-                    if curr_title is not None:
-                        curr_subtitle = self.parse_subtitle(tag)
-                        if curr_subtitle is not None:
-                            curr_title.add_subtitle(curr_subtitle)
-                            if curr_subtitle is None:
-                                print("WTF")
-                            if curr_title is None:
-                                print("WTF2")
-                            curr_subtitle.set_parent(curr_title)
-                    else:
-                        pass
-                        # print(f"Warning: Subtitle '{text}' found without a parent title")
-                elif level == 'part':
-                    if curr_subtitle is not None:
-                        current_part = self.parse_part(tag)
-                        if current_part is not None:
-                            curr_subtitle.add_part(current_part)
-                            current_part.set_parent(curr_subtitle)
-                    else:
-                        pass
-                        # print(f"Warning: Part '{text}' found without a parent subtitle")
-                elif level == 'section':
-                    section = self.parse_section(tag)
-                    if section is None:
-                        continue
-                    # if current_part is not None:
-                    #    current_part.add_section(section)
-                    #    section.set_parent(current_part)
-                    elif curr_subtitle is not None:
-                        curr_subtitle.add_section(section)
-                        section.set_parent(curr_subtitle)
-                    elif curr_title is not None:
-                        # If no subtitle but we have a title, add directly to title
-                        # print(f"Warning: Section '{text}' has no parent subtitle, adding to title")
-                        curr_title.add_section(section)  # Assuming Title class can hold sections directly
-                        section.set_parent(curr_title)
-                    else:
-                        pass
-                        # print(f"Warning: Section '{text}' found without a parent title or subtitle")
-                    if tag is not None:
-                        # print(' '.join(tag.text.split()))
-                        # print(tag.text)
-                        # print('\n'.join(tag.text.rsplit('\n')))
-                        pass  # break
         return titles
 
     def parse_findings(self, soup):
@@ -350,7 +382,6 @@ class USDocumentParser:
                 # titles.append(currTitle)
                 currSubtitle = None
                 currPart = None
-
             elif section_type == 'subtitle':
                 if currTitle is not None:
                     currSubtitle = Subtitle(text, idref)
@@ -377,8 +408,9 @@ class USDocumentParser:
                 newSection = Section(text, idref)
                 newSection.header = header_text
                 newSection.enum = enum_text
-
                 newSection.add_subsection(self.parse_subsections(entry))
+                newSection.add_quoted_block(self.parse_quoted_blocks(entry))
+                newSection.add_paragraph(self.parse_paragraphs(entry))
 
                 titles.append(newSection)  # Assuming Title class can hold sections directly
 
@@ -392,38 +424,13 @@ class USDocumentParser:
         return titles
 
     def parse_document(self):
-        warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
-
-        # Open the XML file and parse it with BeautifulSoup
-        with open(self.filename, 'r', encoding='utf-8') as file:
-            # Example usage
-            soup = BeautifulSoup(file, 'html.parser')
-
-        def convert_quotes():
-            # Parse the XML text
-
-            # Find all quote tags
-            quote_tags = soup.find_all('quote')
-
-            # Replace each quote tag with quoted text
-            for quote in quote_tags:
-                # Get the text content
-                text = quote.get_text(strip=True)
-                # Replace the quote tag with quoted text
-                quote.replace_with(f'"{text}"')
-
-            # Get the modified text
-            return soup.get_text(strip=True)
-
-        result = convert_quotes()
         # print(result)
-
-        toc = soup.select_one('section:has(header:-soup-contains("Table of contents"))')
-        findings = soup.select_one('section:has(header:-soup-contains("Findings"))')
+        toc = self.soup.select_one('section:has(header:-soup-contains("Table of contents"))')
+        findings = self.soup.select_one('section:has(header:-soup-contains("Findings"))')
         if toc:
-            return self.parse_toc(toc, soup)
+            return self.parse_toc(toc, self.soup)
         elif findings:
-            return self.parse_findings(soup)
+            return self.parse_findings(self.soup)
         else:
             return []
 
@@ -433,12 +440,41 @@ class USDocumentParser:
             return all_items
         items = entry.find_all('item', recursive=False)
         for item in items:
-            item_text = item.select_one('text')
-            enum = item.select_one('enum')
-            header = item.find('header', recursive=False)
-            subclause_obj = Subclause(item.text,item.attrs['id'])
-            subclause_obj.header = header.text if header is not None else None
-            subclause_obj.enum = enum.text if enum is not None else None
-            subclause_obj.add_items(self.parse_items(item))
-            all_items.append(subclause_obj)
+            item_obj = self.parse_item(item)
+            if item_obj is not None:
+                all_items.append(item_obj)
         return all_items
+
+    def parse_subitems(self, entry):
+        all_subitems = []
+        if entry is None:
+            return all_subitems
+        subitems = entry.find_all('subitem', recursive=False)
+        for subitem in subitems:
+            subitem_obj = self.parse_subitem(subitem)
+            if subitem_obj is not None:
+                all_subitems.append(subitem_obj)
+        return all_subitems
+
+    def parse_item(self, item):
+        if item is None:
+            return None
+        item_text = item.select_one('text')
+        enum = item.select_one('enum')
+        header = item.find('header', recursive=False)
+        item_obj = Item(' '.join(item_text.text.split()) if item_text is not None else None, item.attrs['id'])
+        item_obj.header = header.text if header is not None else None
+        item_obj.enum = enum.text if enum is not None else None
+        item_obj.add_subitems(self.parse_subitems(item))
+        return item_obj
+
+    def parse_subitem(self, subitem):
+        if subitem is None:
+            return None
+        item_text = subitem.select_one('text')
+        enum = subitem.select_one('enum')
+        header = subitem.find('header', recursive=False)
+        item_obj = SubItem(' '.join(item_text.text.split()) if item_text is not None else None, subitem.attrs['id'])
+        item_obj.header = header.text if header is not None else None
+        item_obj.enum = enum.text if enum is not None else None
+        return item_obj

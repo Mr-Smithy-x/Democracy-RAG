@@ -1,6 +1,8 @@
 import json
 
-from parser import Title, custom_encoder
+import jmespath
+
+from parser import custom_encoder, Title
 from parser.USDocumentParser import USDocumentParser
 
 
@@ -28,15 +30,28 @@ def debug_print(titles: list[Title]):
             print(f"\tDirect Section {title_idx + 1}.{sec_idx + 1} (under \"{section.parent.text}\"): {section.text}")
         print("=" * 100)
 
-doc = USDocumentParser('xml/BILLS-119hr1eh.xml')
+bill = 'BILLS-119hr1eh'
+#bill = 'BILLS-119hr2385ih'
+#doc = USDocumentParser('xml/BILLS-119hr1eh.xml')
+xml_file = f'xml/{bill}.xml'
+doc = USDocumentParser(xml_file)
 titles = doc.parse_document()
 #titles = parse_document('xml/BILLS-119hr2385ih.xml')
 print(len(titles))
 jsonText = json.dumps(titles, default=custom_encoder, indent=4)
-print(jsonText)
+jsonTextObj = json.loads(jsonText)
+#print(jsonText)
 
+test = doc.soup.select_one('clause[id="HBFB2978477D946698F1183D7CE7BB4D8"]').text
 
-file_name = "BILLS-119hr1eh.json"
+print(test)
+
+jsonText = json.dumps(titles, default=custom_encoder, indent=4)
+result = jmespath.search("clauses[?ref_id=='HBFB2978477D946698F1183D7CE7BB4D8']", jsonTextObj)
+print(result)
+print(jsonText[0:1000])
+
+file_name = f"{bill}.json"
 
 try:
     # Using 'with' ensures the file is properly closed even if errors occur

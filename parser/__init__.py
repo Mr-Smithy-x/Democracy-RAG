@@ -1,5 +1,4 @@
-from parser.models import Title, Subtitle, Part, Section, Subsection, Paragraph, Subparagraph, Clause, Subclause, \
-    Subpart, QuotedBlock, Item
+from parser.models import SubItem, Item, Subpart, Part, Subtitle, Title, Section, Subclause, Clause, Subparagraph, Paragraph, Subsection, QuotedBlock
 
 
 def custom_encoder(obj):
@@ -22,7 +21,7 @@ def custom_encoder(obj):
     elif isinstance(obj, Subsection):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'paragraphs': obj.paragraphs}
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'paragraphs': obj.paragraphs, 'quoted_blocks': obj.quoted_blocks}
     elif isinstance(obj, Paragraph):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
@@ -38,7 +37,7 @@ def custom_encoder(obj):
     elif isinstance(obj, Subclause):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'quoted_blocks': obj.quoted_blocks}
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'quoted_blocks': obj.quoted_blocks, 'items': obj.items}
     elif isinstance(obj, Subpart):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
@@ -46,8 +45,12 @@ def custom_encoder(obj):
     elif isinstance(obj, QuotedBlock):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
-        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subparagraphs': obj.subparagraphs, 'paragraphs': obj.paragraphs, 'clauses': obj.clauses, 'sections': obj.sections, 'subsections': obj.subsections, 'after_quoted_blocks': obj.after_quoted_block}
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subparagraphs': obj.subparagraphs, 'paragraphs': obj.paragraphs, 'clauses': obj.clauses, 'sections': obj.sections, 'subsections': obj.subsections, 'after_quoted_blocks': obj.after_quoted_block, 'items': obj.items, 'titles': obj.titles}
     elif isinstance(obj, Item):
+        # Return a dictionary representation of the User object
+        # You can choose which attributes to include
+        return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum, 'subitems': obj.subitems}
+    elif isinstance(obj, SubItem):
         # Return a dictionary representation of the User object
         # You can choose which attributes to include
         return {'type': obj.__class__.__name__, 'ref_id': obj.refId, 'text': obj.text, 'header': obj.header, 'enum': obj.enum}
