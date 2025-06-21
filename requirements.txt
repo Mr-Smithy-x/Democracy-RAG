@@ -1,4 +1,4 @@
-eventlet~=0.30.0
+eventlet~=0.35.2
 pycryptodome~=3.9.9
 websocket-client~=0.57.0
 python-dotenv~=0.15.0

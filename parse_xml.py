@@ -30,8 +30,8 @@ def debug_print(titles: list[Title]):
             print(f"\tDirect Section {title_idx + 1}.{sec_idx + 1} (under \"{section.parent.text}\"): {section.text}")
         print("=" * 100)
 
-bill = 'BILLS-119hr1eh'
-#bill = 'BILLS-119hr2385ih'
+#bill = 'BILLS-119hr1eh'
+bill = 'BILLS-119hr2385ih'
 #doc = USDocumentParser('xml/BILLS-119hr1eh.xml')
 xml_file = f'xml/{bill}.xml'
 doc = USDocumentParser(xml_file)
@@ -42,14 +42,15 @@ jsonText = json.dumps(titles, default=custom_encoder, indent=4)
 jsonTextObj = json.loads(jsonText)
 #print(jsonText)
 
-test = doc.soup.select_one('clause[id="HBFB2978477D946698F1183D7CE7BB4D8"]').text
+test = doc.soup.select_one('clause[id="HBFB2978477D946698F1183D7CE7BB4D8"]')
 
-print(test)
+if test is not None:
+    print(test)
 
 jsonText = json.dumps(titles, default=custom_encoder, indent=4)
-result = jmespath.search("clauses[?ref_id=='HBFB2978477D946698F1183D7CE7BB4D8']", jsonTextObj)
-print(result)
-print(jsonText[0:1000])
+#result = jmespath.search("clauses[?ref_id=='HBFB2978477D946698F1183D7CE7BB4D8']", jsonTextObj)
+#print(result)
+#print(jsonText[0:1000])
 
 file_name = f"{bill}.json"
 
