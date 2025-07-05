@@ -14,10 +14,10 @@ class NodeObject:
         super().__init__()
         self.id = id
         if name is not None:
-            self.title = f'<b>{name}</b> {enum} {header}'
+            self.title = f'<b>{header}</b>'
         else:
-            self.title = f'{enum}: {header}'
-        self.header = header
+            self.title = f'<b>{header}</b>'
+        self.header = f'<b>{header}</b><br>'
         self.enum = enum
         self.children = []
         self.icon = 'Scale'
@@ -56,34 +56,61 @@ class TableOfContents:
             # Parse the XML text
 
             # Find all quote tags
-            enum_tags = self.soup.find_all('enum')
-            text_tags = self.soup.find_all('text')
-            clause_tags = self.soup.find_all('clause')
+            enum_tags: ResultSet[bs4.element.Tag] = self.soup.find_all('enum')
+            text_tags: ResultSet[bs4.element.Tag] = self.soup.find_all('text')
+            external_tags: ResultSet[bs4.element.Tag] = self.soup.find_all('external-xref')
+            clause_tags: ResultSet[bs4.element.Tag] = self.soup.find_all('clause')
             header_tags: ResultSet[bs4.element.Tag] = self.soup.find_all('header')
-            quote_tags = self.soup.find_all('quote')
-            quote_block_tags = self.soup.find_all('quoted-block')
-            paragraphs = self.soup.find_all('paragraph')
-            subparagraphs = self.soup.find_all('subparagraph')
+            quote_tags: ResultSet[bs4.element.Tag] = self.soup.find_all('quote')
+            quote_block_tags: ResultSet[bs4.element.Tag] = self.soup.find_all('quoted-block')
+            paragraphs: ResultSet[bs4.element.Tag] = self.soup.find_all('paragraph')
+            subparagraphs: ResultSet[bs4.element.Tag] = self.soup.find_all('subparagraph')
+
 
             # Replace each quote tag with quoted text
-            for enum in enum_tags:
+            for external in external_tags:
                 # Get the text content
-                text = ' '.join(enum.get_text(strip=False).split())
+                doc_type = external.attrs['legal-doc']
+                cite_type = external.attrs['parsable-cite']
+                text = ' '.join(external.get_text(strip=False).split())
                 # Replace the quote tag with quoted text
-                if enum.string is not None:
-                    enum.string.replace_with(f'<b>{text} </b>')
+                replace = f'<a doc-type="{doc_type}" doc-cite="{cite_type}" href="/api/reference/{doc_type}?cite={cite_type}"><b>{text}</b></a>'
+                if external.string is not None:
+                    external.string.replace_with(replace)
                 else:
-                    enum.replace_with(f'<b>{text} </b>')
+                    external.replace_with(replace)
+
+            # Replace each quote tag with quoted text
+            for header in header_tags:
+                # Get the text content
+                text = ' '.join(header.get_text(strip=False).split())
+                #print(header.previous_sibling.name)
+                if header.find_previous_sibling() is not None:
+                    #print(f"Header has Previous: {header.find_previous_sibling()}")
+                    
+                    text = f'{header.parent.name.capitalize()} {' '.join(header.find_previous_sibling().text.split())} {text}'
+                # Replace the quote tag with quoted text
+                if header.string is not None:
+                    header.string.replace_with(f'{text}:')
+                else:
+                    header.replace_with(f'{text}:')
+                #header.string.replace_with()
 
             # Replace each quote tag with quoted text
             for textt in text_tags:
                 # Get the text content
                 text = ' '.join(textt.get_text(strip=False).split())
+                inline = textt.attrs['display-inline'] if textt.has_attr('display-inline') else None
+                temp = None
+                if inline == "yes-display-inline":
+                    temp = f'<div>{text}</div>'
+                else:
+                    temp = f'<p>{text}</p>'    
                 # Replace the quote tag with quoted text
                 if textt.string is not None:
-                    textt.string.replace_with(f'{text}<br>')
+                    textt.string.replace_with(temp)
                 else:
-                    textt.replace_with(f'{text}<br>')
+                    textt.replace_with(temp)
 
             # Replace each quote tag with quoted text
             for clause_tag in clause_tags:
@@ -95,16 +122,6 @@ class TableOfContents:
                 else:
                     clause_tag.replace_with(f'<p>{text}</p>')
 
-            # Replace each quote tag with quoted text
-            for header in header_tags:
-                # Get the text content
-                text = ' '.join(header.get_text(strip=False).split())
-                # Replace the quote tag with quoted text
-                if header.string is not None:
-                    header.string.replace_with(f'<b>{text}: </b><br>')
-                else:
-                    header.replace_with(f'<b>{text}: </b><br>')
-                #header.string.replace_with()
 
             # Replace each quote tag with quoted text
             for quote in quote_tags:
@@ -146,7 +163,7 @@ class TableOfContents:
         section_enum = ' '.join(section.find('enum', recursive=False).text.split()) if section.find('enum', recursive=False) is not None else ''
         section_text = ' '.join(section.find('text', recursive=False).text.split() if section.find('text', recursive=False) is not None else ''.split())
         section_obj = NodeObject(section_id, section_header, section_enum, section.name.capitalize())
-        section_obj.details = ' '.join(section.text.split())
+        section_obj.details = ' '.join(section.text.split()).replace(f'{section_enum} {section_header}', f'{section_header}')
         section_obj.description = ""
         return section_obj
 
@@ -156,7 +173,7 @@ class TableOfContents:
         part_enum = ' '.join(part.find('enum', recursive=False).text.split()) if part.find('enum', recursive=False) is not None else ''
         part_text = ' '.join(part.find('text', recursive=False).text.split() if part.find('text', recursive=False) is not None else ''.split())
         part_obj = NodeObject(part_id, part_header, part_enum, part.name.capitalize())
-        part_obj.details = ' '.join(part.text.split())
+        part_obj.details = ' '.join(part.text.split()).replace(f'{part} {part_header}', f'{part_header}')
         part_obj.description = ""
         return part_obj
 
@@ -261,6 +278,8 @@ def main():
 
     with open(f"json/{bill}.json", "w") as outfile:
         outfile.write(jsonText)
+
+    print("Completed")
 
 
 
