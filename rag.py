@@ -94,21 +94,21 @@ def get_embedding(text: str) -> np.ndarray:
     model_name = "sentence-transformers/all-MiniLM-L6-v2"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+    # Load model on meta device first (this is what's causing your issue)
+    model = AutoModel.from_pretrained(model_name, device_map="auto")
+
+    # Check if model is on meta device and move it properly
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # Load model with meta device first
-    with torch.device('meta'):
-        model = AutoModel.from_pretrained(model_name)
-
-    # Move from meta to target device and load weights
-    model = model.to_empty(device=device)
-
-    # Load the actual weights
-    checkpoint = AutoModel.from_pretrained(model_name, torch_dtype=torch.float32)
-    model.load_state_dict(checkpoint.state_dict())
-
-    # Clean up the temporary checkpoint
-    del checkpoint
+    # If model parameters are on meta device, use to_empty()
+    if next(model.parameters()).device.type == 'meta':
+        model = model.to_empty(device=device)
+        # Reload the weights from the pretrained model
+        state_dict = AutoModel.from_pretrained(model_name).state_dict()
+        model.load_state_dict(state_dict)
+    else:
+        # If not on meta device, use regular to()
+        model = model.to(device)
 
     # Tokenize the text and convert to tensor
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
