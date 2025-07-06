@@ -20,6 +20,17 @@ PG_DB_PORT = os.getenv('PG_DB_PORT')
 PG_DB_NAME = os.getenv('PG_DB_NAME')
 
 
+def connect_postgres_db():
+    """Connect to PostgreSQL database"""
+    import psycopg2
+    return psycopg2.connect(
+        dbname=PG_DB_NAME,
+        host=PG_DB_HOST,
+        port=PG_DB_PORT,
+        password=PG_DB_PASS,
+        user=PG_DB_USER
+    )
+
 try:
     from vector_search import get_embedding, find_similar
     print("Successfully imported functions from vector_search.py")
@@ -59,18 +70,6 @@ except ImportError:
                                                                                         min=1e-9)
 
         return embeddings.numpy()
-
-    def connect_postgres_db():
-        """Connect to PostgreSQL database"""
-        import psycopg2
-        return psycopg2.connect(
-            dbname=PG_DB_NAME,
-            host=PG_DB_HOST,
-            port=PG_DB_PORT,
-            password=PG_DB_PASS,
-            user=PG_DB_USER
-        )
-
 
     def find_similar(package_id, query_vector: np.ndarray, limit: int = 5):
         """Find similar vectors using cosine similarity"""
