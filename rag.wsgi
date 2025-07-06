@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/var/www/usarag/.venv/bin/python3
 import sys
 import os
 
