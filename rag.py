@@ -190,6 +190,6 @@ def api_search():
 
 # Run the Flask app
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True)#, host='0.0.0.0', port=5001)
     print("Server running at http://localhost:5001")
     print("To test, send a POST request to http://localhost:5001/search with JSON body: {'query': 'your search text', 'limit': 5}")
