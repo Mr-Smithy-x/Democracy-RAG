@@ -1,6 +1,6 @@
 #%%
 # Import necessary libraries
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, render_template_string
 import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModel
@@ -103,6 +103,10 @@ except ImportError:
 
 # Create a Flask app to serve search functionality
 app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Hello World!"
 
 @app.route('/search', methods=['GET'], strict_slashes=False)
 def api_search():
