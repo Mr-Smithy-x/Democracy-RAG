@@ -31,47 +31,47 @@ def connect_postgres_db():
         user=PG_DB_USER
     )
 
-try:
-    from vector_search import get_embedding, find_similar
-    print("Successfully imported functions from vector_search.py")
-except ImportError:
-    print("Could not import from vector_search.py. Defining functions here instead.")
+#try:
+    #from vector_search import get_embedding, find_similar
+    #print("Successfully imported functions from vector_search.py")
+#except ImportError:
+#   print("Could not import from vector_search.py. Defining functions here instead.")
 
-    # Define the necessary functions if import fails
-    def get_embedding(text: str) -> np.ndarray:
-        """
-        Convert text to embeddings using the transformer model.
+# Define the necessary functions if import fails
+def get_embedding(text: str) -> np.ndarray:
+    """
+    Convert text to embeddings using the transformer model.
 
-        Args:
-            text (str): Input text to convert to embedding
+    Args:
+        text (str): Input text to convert to embedding
 
-        Returns:
-            np.ndarray: The embedding vector
-        """
-        # You need to initialize these variables with your model
-        model_name = "sentence-transformers/all-MiniLM-L6-v2"
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModel.from_pretrained(model_name)
+    Returns:
+        np.ndarray: The embedding vector
+    """
+    # You need to initialize these variables with your model
+    model_name = "sentence-transformers/all-MiniLM-L6-v2"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModel.from_pretrained(model_name)
 
-        # Tokenize the text and convert to tensor
-        inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+    # Tokenize the text and convert to tensor
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
 
-        # Get model output
-        with torch.no_grad():
-            outputs = model(**inputs)
+    # Get model output
+    with torch.no_grad():
+        outputs = model(**inputs)
 
-        # Use mean pooling to get a single vector representation
-        attention_mask = inputs['attention_mask']
-        token_embeddings = outputs.last_hidden_state
+    # Use mean pooling to get a single vector representation
+    attention_mask = inputs['attention_mask']
+    token_embeddings = outputs.last_hidden_state
 
-        # Calculate mean of token embeddings weighted by attention mask
-        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-        embeddings = torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1),
-                                                                                        min=1e-9)
+    # Calculate mean of token embeddings weighted by attention mask
+    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+    embeddings = torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1),
+                                                                                    min=1e-9)
 
-        return embeddings.numpy()
+    return embeddings.numpy()
 
-    def find_similar(package_id, query_vector: np.ndarray, limit: int = 5):
+def find_similar(package_id, query_vector: np.ndarray, limit: int = 5):
         """Find similar vectors using cosine similarity"""
         conn = connect_postgres_db()
         cur = conn.cursor()
