@@ -51,10 +51,19 @@ def get_embedding(text: str) -> np.ndarray:
     # You need to initialize these variables with your model
     model_name = "sentence-transformers/all-MiniLM-L6-v2"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModel.from_pretrained(model_name).to_empty('cpu')
+    model = AutoModel.from_pretrained(model_name)
+
+
+    # Ensure model is on the correct device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
 
     # Tokenize the text and convert to tensor
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+
+
+    # Move inputs to the same device as model
+    inputs = {k: v.to(device) for k, v in inputs.items()}
 
     # Get model output
     with torch.no_grad():
@@ -69,7 +78,7 @@ def get_embedding(text: str) -> np.ndarray:
     embeddings = torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1),
                                                                                     min=1e-9)
 
-    return embeddings.numpy()
+    return embeddings.cpu().numpy()
 
 def find_similar(package_id, query_vector: np.ndarray, limit: int = 5):
         """Find similar vectors using cosine similarity"""
