@@ -9,7 +9,7 @@ if project_home not in sys.path:
 
 # Activate the virtual environment
 # Replace 'venv' with the actual name of your virtual environment directory
-activate_this = os.path.join(project_home, '.venv/bin/activate_this.py')
+activate_this = os.path.join(project_home, '.venv/bin/activate')
 with open(activate_this) as f:
     exec(f.read(), dict(__file__=activate_this))
 
