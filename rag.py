@@ -185,7 +185,7 @@ def api_search():
         }), 200
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e), 'e': e}), 500
 
 # Run the Flask app
 if __name__ == '__main__':
