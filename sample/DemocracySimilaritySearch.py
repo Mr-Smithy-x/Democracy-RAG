@@ -389,13 +389,13 @@ if __name__ == "__main__":
 
 
     try:
-        search("illegal immigrants")
+        #search("illegal immigrants")
         # downloads()
 
         #update_title_embeddings()
         #insert_all_file_chunks_from_path('htm/')
 
-        #update()
+        update()
     except Exception as e:
         print(f"Error inserting chunks: {e}")
     finally:

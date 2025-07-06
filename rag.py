@@ -38,7 +38,7 @@ def connect_postgres_db():
 #   print("Could not import from vector_search.py. Defining functions here instead.")
 
 # Define the necessary functions if import fails
-def get_embedding(text: str) -> np.ndarray:
+def get_embedding2(text: str) -> np.ndarray:
     """
     Convert text to embeddings using the transformer model.
 
@@ -61,6 +61,57 @@ def get_embedding(text: str) -> np.ndarray:
     # Tokenize the text and convert to tensor
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
 
+
+    # Move inputs to the same device as model
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+
+    # Get model output
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    # Use mean pooling to get a single vector representation
+    attention_mask = inputs['attention_mask']
+    token_embeddings = outputs.last_hidden_state
+
+    # Calculate mean of token embeddings weighted by attention mask
+    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+    embeddings = torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1),
+                                                                                    min=1e-9)
+
+    return embeddings.cpu().numpy()
+
+
+def get_embedding(text: str) -> np.ndarray:
+    """
+    Convert text to embeddings using the transformer model.
+
+    Args:
+        text (str): Input text to convert to embedding
+
+    Returns:
+        np.ndarray: The embedding vector
+    """
+    model_name = "sentence-transformers/all-MiniLM-L6-v2"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Load model with meta device first
+    with torch.device('meta'):
+        model = AutoModel.from_pretrained(model_name)
+
+    # Move from meta to target device and load weights
+    model = model.to_empty(device=device)
+
+    # Load the actual weights
+    checkpoint = AutoModel.from_pretrained(model_name, torch_dtype=torch.float32)
+    model.load_state_dict(checkpoint.state_dict())
+
+    # Clean up the temporary checkpoint
+    del checkpoint
+
+    # Tokenize the text and convert to tensor
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
 
     # Move inputs to the same device as model
     inputs = {k: v.to(device) for k, v in inputs.items()}
