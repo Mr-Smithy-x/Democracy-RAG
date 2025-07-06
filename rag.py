@@ -189,7 +189,7 @@ def api_search():
         return jsonify({'error': str(e)}), 500
 
 # Run the Flask app
-#if __name__ == '__main__':
-app.run(debug=True, port=80)
-print("Server running at http://localhost:5001")
-print("To test, send a POST request to http://localhost:5001/search with JSON body: {'query': 'your search text', 'limit': 5}")
+if __name__ == '__main__':
+    app.run(debug=True, port=80)
+    print("Server running at http://localhost:5001")
+    print("To test, send a POST request to http://localhost:5001/search with JSON body: {'query': 'your search text', 'limit': 5}")
