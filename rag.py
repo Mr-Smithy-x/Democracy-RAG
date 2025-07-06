@@ -51,7 +51,7 @@ def get_embedding(text: str) -> np.ndarray:
     # You need to initialize these variables with your model
     model_name = "sentence-transformers/all-MiniLM-L6-v2"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModel.from_pretrained(model_name).to('cpu')
+    model = AutoModel.from_pretrained(model_name).to_empty('cpu')
 
     # Tokenize the text and convert to tensor
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
