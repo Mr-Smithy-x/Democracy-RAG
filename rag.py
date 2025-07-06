@@ -136,6 +136,7 @@ def initialize_logging(log_file='app.log', log_level=logging.DEBUG, max_bytes=10
 
 # Create a Flask app to serve search functionality
 app = Flask(__name__)
+app.debug = True
 logger = initialize_logging()
 
 @app.route('/')
