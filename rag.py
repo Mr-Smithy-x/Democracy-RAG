@@ -187,7 +187,7 @@ def api_search():
     except Exception as e:
         logger.error(f"Error occurred: {e}")
         logger.exception(e, extra={'stack': True})
-        return jsonify({'error': str(e), 'e': e}), 500
+        return jsonify({'error': str(e)}), 500
 
 # Run the Flask app
 if __name__ == '__main__':
